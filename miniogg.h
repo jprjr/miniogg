@@ -335,7 +335,7 @@ void miniogg_finish_page(miniogg* p) {
     miniogg_set_crc(p,crc);
 
     if(p->segment == MINIOGG_MAX_SEGMENTS &&
-       p->header[MINIOGG_HEADER_SIZE + p->segment] == MINIOGG_SEGMENT_SIZE) {
+       p->header[MINIOGG_HEADER_SIZE + 254] == MINIOGG_SEGMENT_SIZE) {
         p->continuation = 1;
     } else {
         p->continuation = 0;
