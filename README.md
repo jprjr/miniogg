@@ -70,6 +70,13 @@ One thing to note - this library has no concept of auto-flushing a page.
 As far as I know, all the various (x)-in Ogg mappings require header packets
 to be on their own page(s). Be sure to check your codec's Ogg Mapping carefully.
 
+Additionally, `miniogg_add_packet` will record the amount of bytes used
+into the `used` outvar. It's entirely possible to consume all the bytes
+of the packet data, but still return 1 because the muxer needs to write
+a final terminating byte on the next page. You should not assume that
+writing all the bytes of the packet means you're complete, only the return
+value of `miniogg_add_packet` can be used for that.
+
 ## `miniogg` struct fields
 
 The following fields can be set by the user sometime before
