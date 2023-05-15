@@ -39,7 +39,6 @@ int main(int argc, const char* argv[] ) {
     miniogg p;
 
     ogg_sync_init(&oy);
-    miniogg_init(&p);
 
     if(argc < 2) {
         fprintf(stderr,"Usage: %s /path/to/source.ogg /path/to/dest.ogg\n",argv[0]);
@@ -75,6 +74,7 @@ int main(int argc, const char* argv[] ) {
         while(ogg_sync_pageout(&oy,&og)) {
             if(ogg_page_bos(&og) && !serial) {
                 serialno = (uint32_t)ogg_page_serialno(&og);
+                miniogg_init(&p,serialno);
                 ogg_stream_init(&os,serialno);
                 serial = 1;
             }
@@ -116,8 +116,7 @@ int main(int argc, const char* argv[] ) {
 
     complete:
 
-    p.eos = 1;
-    miniogg_finish_page(&p);
+    miniogg_eos(&p);
     fwrite(p.header,1,p.header_len,out);
     fwrite(p.body,1,p.body_len,out);
 

@@ -76,9 +76,9 @@ struct miniogg {
 
 typedef struct miniogg miniogg;
 
-/* resets all fields to default values */
+/* resets all fields to default values and sets a serial number */
 MINIOGG_API
-void miniogg_init(miniogg* p);
+void miniogg_init(miniogg* p, uint32_t serialno);
 
 /* returns 0 if packet was added fully, 1 if continuation is needed,
  * the number of bytes read is returned in used */
@@ -90,6 +90,10 @@ int miniogg_add_packet(miniogg* p, const void* data, size_t len, uint64_t granul
  * and resets the bos/eos/continuation flags */
 MINIOGG_API
 void miniogg_finish_page(miniogg* p);
+
+/* similar to miniogg_finish_page but sets the end-of-stream flag to true */
+MINIOGG_API
+void miniogg_eos(miniogg* p);
 
 /* check on large the body of the ogg page would be if
  * written out right now (header length + body length) */
@@ -245,7 +249,7 @@ static inline uint32_t miniogg_used_space__inline(const miniogg* p) {
 }
 
 MINIOGG_API
-void miniogg_init(miniogg* p) {
+void miniogg_init(miniogg* p, uint32_t serialno) {
     memset(p->header,0,27);
     p->header_len = 0;
     p->body_len = 0;
@@ -255,7 +259,7 @@ void miniogg_init(miniogg* p) {
     p->continuation = 0;
     p->granulepos = ~0ULL;
     p->pageno = 0;
-    p->serialno = 0;
+    p->serialno = serialno;
 
     p->segment = 0;
     p->packets = 0;
@@ -351,6 +355,12 @@ void miniogg_finish_page(miniogg* p) {
     p->bos = 0;
     p->eos = 0;
     p->packets = 0;
+}
+
+MINIOGG_API
+void miniogg_eos(miniogg* p) {
+    p->eos = 1;
+    miniogg_finish_page(p);
 }
 
 

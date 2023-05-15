@@ -13,11 +13,11 @@ and include the header file:
 ```
 
 Then somewhere in your program, allocate a `miniogg` struct
-and initialize it:
+and initialize it with a serial number:
 
 ```c
 miniogg muxer;
-miniogg_init(&muxer);
+miniogg_init(&muxer,1234);
 ```
 
 Then whenever you're ready to add a packet call `miniogg_add_packet()` and
@@ -46,17 +46,38 @@ while(miniogg_add_packet(&muxer,&buffer[pos],buffer_len,granuelpos,&used)) {
 }
 ```
 
+Once you're done adding packets to your page, call `miniogg_page_finish()`
+to encode the page headers, then write out the contents of the
+`header` and `body` fields:
+
+```c
+miniogg_finish_page(&muxer);
+fwrite(muxer.header,1,muxer.header_len,out);
+fwrite(muxer.body,1,muxer.body_len,out);
+```
+
+When you're complete with writing your ogg stream, call `miniogg_eos()`
+and write out the final page:
+
+```c
+miniogg_eos(&muxer);
+fwrite(muxer.header,1,muxer.header_len,out);
+fwrite(muxer.body,1,muxer.body_len,out);
+```
+
 One thing to note - this library has no concept of auto-flushing a page.
 As far as I know, all the various (x)-in Ogg mappings require header packets
 to be on their own page(s). Be sure to check your codec's Ogg Mapping carefully.
 
 ## `miniogg` struct fields
 
-The following fields are meant to be set by the user sometime before
+The following fields can be set by the user sometime before
 calling `miniogg_page_finish()`:
 
-* `uint8_t eos` - a flag indicating the page is the end of the stream.
-* `uint32_t serialno` - every ogg bitstream should have a unique serial number.
+* `uint32_t serialno` - every ogg bitstream should have a unique serial number,
+`miniogg_init()` sets this.
+* `uint8_t eos` - a flag indicating the page is the end of the stream,
+`miniogg_eos()` sets this.
 
 These fields can be read after calling `miniogg_add_packet()`:
 
@@ -79,13 +100,9 @@ The following fields are meant to be read/used after calling `miniogg_page_finis
 * `uint8_t body[65025]` - contains the bytes of the Ogg page body.
 * `uint32_t body_len` - contains the length of Ogg page body.
 
-So in summary, the only fields a library user needs to set are:
-
-* `uint32_t serialno`
-* `uint8_t eos`
-
 The rest are intended to be read to inspect the state of the current page,
-or to get the page header and body after calling `miniogg_page_finish()`.
+or to get the page header and body after calling `miniogg_page_finish()` or
+`miniogg_eos()`.
 
 ## License
 
