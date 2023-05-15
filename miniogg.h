@@ -229,18 +229,6 @@ static inline void miniogg_set_serialno(miniogg* p, uint32_t serialno) {
     miniogg_pack_u32le(&p->header[14],serialno);
 }
 
-static inline void miniogg_set_continuation(miniogg* p, uint8_t cont) {
-    p->header[5] ^= (-cont ^ p->header[5]) & 0x01;
-}
-
-static inline void miniogg_set_bos(miniogg* p, uint8_t bos) {
-    p->header[5] ^= (-bos ^ p->header[5]) & 0x02;
-}
-
-static inline void miniogg_set_eos(miniogg* p, uint8_t eos) {
-    p->header[5] ^= (-eos ^ p->header[5]) & 0x04;
-}
-
 static inline uint32_t miniogg_used_space__inline(const miniogg* p) {
     uint32_t len = 0;
     uint32_t i = 0;
@@ -280,7 +268,7 @@ uint32_t miniogg_used_space(const miniogg* p) {
 
 MINIOGG_API
 uint32_t miniogg_available_space(const miniogg* p) {
-    if(p->segment >= MINIOGG_MAX_SEGMENT) return 0;
+    if(p->segment >= MINIOGG_MAX_SEGMENTS) return 0;
     return MINIOGG_MAX_BODY - ( ((uint32_t)p->segment) * MINIOGG_SEGMENT_SIZE) - 1;
 }
 
@@ -332,15 +320,13 @@ void miniogg_finish_page(miniogg* p) {
 
     if(p->bos) p->pageno = 0;
 
-    miniogg_set_pageno(p,p->pageno++);
+    p->header[5] = 0 | p->eos << 2 | p->bos << 1 | p->continuation;
     miniogg_set_granulepos(p,p->granulepos);
-    miniogg_set_crc(p,crc);
-    miniogg_set_bos(p,p->bos);
-    miniogg_set_eos(p,p->eos);
-    miniogg_set_continuation(p,p->continuation);
     miniogg_set_serialno(p,p->serialno);
-
+    miniogg_set_pageno(p,p->pageno++);
+    miniogg_set_crc(p,0);
     p->header[26] = (uint8_t)p->segment;
+
     p->header_len = (size_t)p->segment + MINIOGG_HEADER_SIZE;
     p->body_len = miniogg_used_space__inline(p);
 
