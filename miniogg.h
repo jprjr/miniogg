@@ -30,8 +30,10 @@
 
 #define MINIOGG_MAX_PAGE 65307
 #define MINIOGG_MAX_SEGMENTS 255
-#define MINIOGG_MAX_HEADER (MINIOGG_MAX_SEGMENTS + 27) /* 282 */
-#define MINIOGG_MAX_BODY (MINIOGG_MAX_SEGMENTS * 255) /* 65025 */
+#define MINIOGG_SEGMENT_SIZE 255
+#define MINIOGG_HEADER_SIZE 27
+#define MINIOGG_MAX_HEADER (MINIOGG_MAX_SEGMENTS + MINIOGG_HEADER_SIZE) /* 282 */
+#define MINIOGG_MAX_BODY (MINIOGG_MAX_SEGMENTS * MINIOGG_SEGMENT_SIZE) /* 65025 */
 
 #ifdef __cplusplus
 extern "C" {
@@ -95,12 +97,13 @@ void miniogg_finish_page(miniogg* p);
 MINIOGG_API
 void miniogg_eos(miniogg* p);
 
-/* check on large the body of the ogg page would be if
+/* returns how large the ogg page would be if
  * written out right now (header length + body length) */
 MINIOGG_API
 uint32_t miniogg_used_space(const miniogg* p);
 
-/* returns how much space is available for data */
+/* returns how much space is available for data in the current page,
+ * without having to continue into another page. */
 MINIOGG_API
 uint32_t miniogg_available_space(const miniogg* p);
 
@@ -243,14 +246,14 @@ static inline uint32_t miniogg_used_space__inline(const miniogg* p) {
     uint32_t i = 0;
     uint32_t segments = p->segment;
     for(i=0;i<segments;i++) {
-        len += (uint32_t)p->header[27+i];
+        len += (uint32_t)p->header[MINIOGG_HEADER_SIZE+i];
     }
     return len;
 }
 
 MINIOGG_API
 void miniogg_init(miniogg* p, uint32_t serialno) {
-    memset(p->header,0,27);
+    memset(p->header,0,MINIOGG_HEADER_SIZE);
     p->header_len = 0;
     p->body_len = 0;
 
@@ -272,12 +275,13 @@ void miniogg_init(miniogg* p, uint32_t serialno) {
 
 MINIOGG_API
 uint32_t miniogg_used_space(const miniogg* p) {
-    return miniogg_used_space__inline(p) + p->segment + 27;
+    return miniogg_used_space__inline(p) + p->segment + MINIOGG_HEADER_SIZE;
 }
 
 MINIOGG_API
 uint32_t miniogg_available_space(const miniogg* p) {
-    return MINIOGG_MAX_BODY - ( ((uint32_t)p->segment) * 255);
+    if(p->segment >= MINIOGG_MAX_SEGMENT) return 0;
+    return MINIOGG_MAX_BODY - ( ((uint32_t)p->segment) * MINIOGG_SEGMENT_SIZE) - 1;
 }
 
 MINIOGG_API
@@ -296,8 +300,8 @@ int miniogg_add_packet(miniogg* p, const void* data, size_t len, uint64_t granul
     l = miniogg_used_space__inline(p);
 
     while(slots) {
-        uint8_t b = len > 255 ? 255 : (uint8_t)len;
-        p->header[27 + slot++] = b;
+        uint8_t b = len > MINIOGG_SEGMENT_SIZE ? MINIOGG_SEGMENT_SIZE : (uint8_t)len;
+        p->header[MINIOGG_HEADER_SIZE + slot++] = b;
 
         len -= b;
         u += b;
@@ -337,7 +341,7 @@ void miniogg_finish_page(miniogg* p) {
     miniogg_set_serialno(p,p->serialno);
 
     p->header[26] = (uint8_t)p->segment;
-    p->header_len = (size_t)p->segment + 27;
+    p->header_len = (size_t)p->segment + MINIOGG_HEADER_SIZE;
     p->body_len = miniogg_used_space__inline(p);
 
     crc = crc32(crc,p->header,p->header_len);
@@ -345,7 +349,7 @@ void miniogg_finish_page(miniogg* p) {
     miniogg_set_crc(p,crc);
 
     if(p->segment == MINIOGG_MAX_SEGMENTS &&
-       p->header[27 + p->segment] == 255) {
+       p->header[MINIOGG_HEADER_SIZE + p->segment] == MINIOGG_SEGMENT_SIZE) {
         p->continuation = 1;
     } else {
         p->continuation = 0;

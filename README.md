@@ -77,6 +77,39 @@ a final terminating byte on the next page. You should not assume that
 writing all the bytes of the packet means you're complete, only the return
 value of `miniogg_add_packet` can be used for that.
 
+## `miniogg` function reference:
+
+```c
+/* resets all fields to default values and sets a serial number */
+MINIOGG_API
+void miniogg_init(miniogg* p, uint32_t serialno);
+
+/* returns 0 if packet was added fully, 1 if continuation is needed,
+ * the number of bytes read is returned in used */
+MINIOGG_API
+int miniogg_add_packet(miniogg* p, const void* data, size_t len, uint64_t granulepos, size_t *used);
+
+/* encodes flags, granulepos, etc, calculates the crc32,
+ * sets the header_len and body_len fields, increases pageno
+ * and resets the bos/eos/continuation flags */
+MINIOGG_API
+void miniogg_finish_page(miniogg* p);
+
+/* similar to miniogg_finish_page but sets the end-of-stream flag to true */
+MINIOGG_API
+void miniogg_eos(miniogg* p);
+
+/* returns how large the ogg page would be if
+ * written out right now (header length + body length) */
+MINIOGG_API
+uint32_t miniogg_used_space(const miniogg* p);
+
+/* returns how much space is available for data in the current page,
+ * without having to continue into another page. */
+MINIOGG_API
+uint32_t miniogg_available_space(const miniogg* p);
+```
+
 ## `miniogg` struct fields
 
 The following fields can be set by the user sometime before
