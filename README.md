@@ -69,7 +69,7 @@ These fields are meant to be read before calling `miniogg_page_finish()`:
 
 * `uint32_t bos` - a flag indicating this is the beginning of the stream.
 * `uint32_t pageno` - the current page number.
-* `uint8_t continuation` - a flag that, if non-zero, indicates this page.
+* `uint8_t continuation` - a flag that, if non-zero, indicates this page
 continues a packet from the previous page.
 
 The following fields are meant to be read/used after calling `miniogg_page_finish()`:
