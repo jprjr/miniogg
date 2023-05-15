@@ -18,7 +18,6 @@ and initialize it with a serial number:
 ```c
 miniogg muxer;
 miniogg_init(&muxer,1234);
-FILE* out = fopen("some-file-to-write.ogg","wb");
 ```
 
 Then whenever you're ready to add a packet call `miniogg_add_packet()` and
@@ -29,6 +28,7 @@ ready for writing and write it out immediately before calling `miniogg_add_packe
 again.
 
 ```c
+FILE* out = ... /* assuming we plan to write to a FILE* */
 uint8_t *buffer = ... /* get data from wherever */
 size_t buffer_len = ...
 uint64_t granulepos = ...
