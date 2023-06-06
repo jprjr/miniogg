@@ -100,13 +100,11 @@ stream.
 uint8_t buffer[BUFFER_SIZE];
 FILE* in = ... /* assuming we plan to read from FILE* */
 
-/* used to track where we are within the buffer while adding the page */
-size_t used = 0;
-size_t pos = 0;
-size_t read = 0;
-size_t len = 0;
-miniogg demuxer;
+size_t len = 0; /* will store number of bytes read from FILE */
+size_t used = 0; /* number of bytes consumed by miniogg_add_page */
+size_t pos = 0; /* current position within the buffer */
 
+miniogg demuxer;
 miniogg_init(&demuxer,0);
 
 while( (len = fread(buffer,1,BUFFER_SIZE,in)) > 0) {
