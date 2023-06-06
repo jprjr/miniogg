@@ -99,20 +99,19 @@ stream.
 #define BUFFER_SIZE 4096
 uint8_t buffer[BUFFER_SIZE];
 FILE* in = ... /* assuming we plan to read from FILE* */
-uint8_t *buffer = ... /* get data from file */
-size_t buffer_len = ...
 
 /* used to track where we are within the buffer while adding the page */
 size_t used = 0;
 size_t pos = 0;
 size_t read = 0;
+size_t len = 0;
 miniogg demuxer;
 
 miniogg_init(&demuxer,0);
 
 while( (len = fread(buffer,1,BUFFER_SIZE,in)) > 0) {
     pos = 0;
-    while(miniogg_add_page(&demuxer,&buffer[pos],buffer_len,&used) == 0) {
+    while(miniogg_add_page(&demuxer,&buffer[pos],len,&used) == 0) {
         /* do things with the page */
         pos += used;
         len -= used;
