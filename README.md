@@ -97,7 +97,7 @@ stream.
 
 ```c
 #define BUFFER_SIZE 4096
-uint8_t buffer[4096];
+uint8_t buffer[BUFFER_SIZE];
 FILE* in = ... /* assuming we plan to read from FILE* */
 uint8_t *buffer = ... /* get data from file */
 size_t buffer_len = ...
