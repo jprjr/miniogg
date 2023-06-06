@@ -1,6 +1,6 @@
 # MINIOGG
 
-A tiny, single-header, zero-allocation [Ogg](https://xiph.org/ogg/) muxer.
+A tiny, single-header, zero-allocation [Ogg](https://xiph.org/ogg/) muxer/demuxer.
 
 ## Usage
 
@@ -20,7 +20,12 @@ miniogg muxer;
 miniogg_init(&muxer,1234);
 ```
 
-Then whenever you're ready to add a packet call `miniogg_add_packet()` and
+If you're planning to demux, you can use any serial number,
+it will be ignored anyway.
+
+### Muxing
+
+To add a packet call `miniogg_add_packet()` and
 check the return value. If `miniogg_add_packet()` returns 0, the packet
 was added to the Ogg page entirely. If it returns 1, the packet was
 partially added - you should call `miniogg_finish_page()` to get the page
@@ -77,6 +82,42 @@ a final terminating byte on the next page. You should not assume that
 writing all the bytes of the packet means you're complete, only the return
 value of `miniogg_add_packet` can be used for that.
 
+### Demuxing
+
+To add a page call `miniogg_add_page()` and
+check the return value. If `miniogg_add_page()` returns 0, the full Ogg page
+has been loaded and parsed, and you can start calling `miniogg_get_packet()`
+or `miniogg_iter_packet()`.
+If it returns 1, then more data is needed. Anything else is an error.
+
+Similar to muxing with `miniogg_add_packet()` -  `miniogg_add_page()` has an
+outvar - `used` - that returns the number of bytes read from your data
+stream.
+
+Once `miniogg_add_page()` returns 0, all the struct fields will be loaded
+and can be inspected.
+
+To get packets, call `miniogg_iter_packet()`. You should repeatedly
+call this function until it returns `NULL`.
+
+Alternatively, if you need to retrieve an individual packet out-of-order,
+you can use `miniogg_get_packet()`. This is less efficient, as looking
+up out-of-order packets requires re-calculating byte offsets and re-scanning
+the segment table. Similar to `miniogg_iter_packet()` - call repeatedly
+with an increasing packet number variable until it returns `NULL`.
+
+Note the `packets` struct field should *not* be used for determining
+how many packets to retrieve, that variable only marks the amount
+of packets that complete on the page. A packet may continue on to
+the next page, in which case the `cont` outvar will be set to 1. You
+should buffer the data and concatenate it with the next call to
+`miniogg_iter_packet()` or `miniogg_get_packet()`.
+
+It's entirely valid for the returned packet size to be `0`, this
+happens when a packet's size is perfectly aligned to a page size,
+and requires a final terminating segment. This should only occur
+when you're dealing with a packet that spans multiple pages.
+
 ## `miniogg` function reference:
 
 ```c
@@ -108,6 +149,23 @@ uint32_t miniogg_used_space(const miniogg* p);
  * without having to continue into another page. */
 MINIOGG_API
 uint32_t miniogg_available_space(const miniogg* p);
+
+/* returns 0 if the page was added fully, 1 if more bytes are needed,
+ * the number of bytes read is returned in used */
+MINIOGG_API
+int miniogg_add_page(miniogg* p, const void* data, size_t len, size_t *used);
+
+/* returns a pointer to the start of packet data, the length of the packet is stored
+ * in len. uses an internal counter to track packet. If the packet is
+ * continued on another page, sets cont to 1, 0 otherwise */
+MINIOGG_API
+const void* miniogg_iter_packet(miniogg* p, size_t *len, uint64_t *granulepos, uint8_t *cont);
+
+/* returns a pointer to the start of packet data, the length of the packet is stored
+ * in len. returns NULL if the packetno is too high. If the packet is
+ * continued on another page, sets cont to 1, 0 otherwise */
+MINIOGG_API
+const void* miniogg_get_packet(const miniogg* p, uint32_t packetno, size_t *len, uint64_t *granulepos, uint8_t *cont);
 ```
 
 ## `miniogg` struct fields
@@ -144,6 +202,8 @@ The following fields are meant to be read/used after calling `miniogg_page_finis
 The rest are intended to be read to inspect the state of the current page,
 or to get the page header and body after calling `miniogg_page_finish()` or
 `miniogg_eos()`.
+
+When demuxing, all fields are intended to be readable by the user.
 
 ## License
 
