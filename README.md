@@ -94,11 +94,48 @@ Similar to muxing with `miniogg_add_packet()` -  `miniogg_add_page()` has an
 outvar - `used` - that returns the number of bytes read from your data
 stream.
 
+
+```c
+#define BUFFER_SIZE 4096
+uint8_t buffer[4096];
+FILE* in = ... /* assuming we plan to read from FILE* */
+uint8_t *buffer = ... /* get data from file */
+size_t buffer_len = ...
+
+/* used to track where we are within the buffer while adding the page */
+size_t used = 0;
+size_t pos = 0;
+size_t read = 0;
+miniogg demuxer;
+
+miniogg_init(&demuxer,0);
+
+while( (len = fread(buffer,1,BUFFER_SIZE,in)) > 0) {
+    pos = 0;
+    while(miniogg_add_page(&demuxer,&buffer[pos],buffer_len,&used) == 0) {
+        /* do things with the page */
+        pos += used;
+        len -= used;
+    }
+}
+```
+
 Once `miniogg_add_page()` returns 0, all the struct fields will be loaded
 and can be inspected.
 
 To get packets, call `miniogg_iter_packet()`. You should repeatedly
 call this function until it returns `NULL`.
+
+```c
+const uint8_t *packet = NULL;
+size_t packet_len = 0;
+uint64_t granulepos = 0;
+uint8_t continued = 0;
+
+while( (packet = miniogg_iter_packet(&demuxer,&packet_len,&granulepos,&continued)) != NULL) {
+    /* do something with packet */
+}
+```
 
 Alternatively, if you need to retrieve an individual packet out-of-order,
 you can use `miniogg_get_packet()`. This is less efficient, as looking
